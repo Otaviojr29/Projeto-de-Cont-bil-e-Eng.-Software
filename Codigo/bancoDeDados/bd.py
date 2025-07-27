@@ -80,4 +80,37 @@ class Banco_Dados():
         return resultados
 
     def editar_produto(self, id, coluna, valor):
-        pass
+        conn = sqlite3.connect(self.arquivo)
+        cursor = conn.cursor()
+        cursor.execute(f'UPDATE produtos SET {coluna} = ? WHERE id = ?', (valor, id))
+        conn.commit()
+        conn.close()
+
+    def cadastrar_funcionario(self, nome, telefone, email, cpf, matricula, salario, funcao):
+        conn = sqlite3.connect(self.arquivo)
+        cursor = conn.cursor()
+        cursor.execute('''
+        INSERT INTO funcionarios (nome, telefone, email, cpf, matricula, salario, funcao)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (nome, telefone, email, cpf, matricula, salario, funcao))
+        conn.commit()
+        conn.close()
+
+    def editar_funcionario(self, id, coluna, valor):
+        conn = sqlite3.connect(self.arquivo)
+        cursor = conn.cursor()
+        cursor.execute(f'UPDATE funcionarios SET {coluna} = ? WHERE id = ?', (valor, id))
+        conn.commit()
+        conn.close()
+
+    def buscar_funcionario(self, coluna, valor):
+        conn = sqlite3.connect(self.arquivo)
+        cursor = conn.cursor()
+        cursor.execute(f'SELECT * FROM funcionarios WHERE {coluna} = ?', (valor,))
+        resultado = cursor.fetchall()
+        conn.close()
+        return resultado
+
+    def conectar(self):
+        return sqlite3.connect(self.arquivo)
+
