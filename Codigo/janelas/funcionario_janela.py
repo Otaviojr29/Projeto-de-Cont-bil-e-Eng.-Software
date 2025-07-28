@@ -99,50 +99,60 @@ class Funcionario(ctk.CTk):
     def salvar_funcionario(self):
         dados = {self.COLUNA_MAP[k]: v.get().strip() for k, v in self.entries.items()}
 
+        # Remove mensagem anterior se existir
+        if hasattr(self, "msg_label") and self.msg_label:
+            self.msg_label.destroy()
+            self.msg_label = None
+
         # Verifica se todos os campos estão preenchidos
         if any(valor == "" for valor in dados.values()):
-            ctk.CTkLabel(self.form_frame, text="Preencha todos os campos!", text_color="red").grid(row=8, column=0, columnspan=2, pady=5)
+            self.msg_label = ctk.CTkLabel(self.form_frame, text="Preencha todos os campos!", text_color="red")
+            self.msg_label.grid(row=8, column=0, columnspan=2, pady=5)
             return
 
         # Validação do CPF: exatamente 11 números
         cpf = dados["cpf"]
         if not (cpf.isdigit() and len(cpf) == 11):
-            ctk.CTkLabel(self.form_frame, text="CPF deve conter exatamente 11 números.", text_color="red").grid(row=8, column=0, columnspan=2, pady=5)
+            self.msg_label = ctk.CTkLabel(self.form_frame, text="CPF deve conter exatamente 11 números.", text_color="red")
+            self.msg_label.grid(row=8, column=0, columnspan=2, pady=5)
             return
 
         # Validação dos outros campos
         if not dados["telefone"].isdigit():
-            ctk.CTkLabel(self.form_frame, text="Telefone deve conter apenas números.", text_color="red").grid(row=8, column=0, columnspan=2, pady=5)
+            self.msg_label = ctk.CTkLabel(self.form_frame, text="Telefone deve conter apenas números.", text_color="red")
+            self.msg_label.grid(row=8, column=0, columnspan=2, pady=5)
             return
         if not dados["matricula"].isdigit():
-            ctk.CTkLabel(self.form_frame, text="Matrícula deve conter apenas números.", text_color="red").grid(row=8, column=0, columnspan=2, pady=5)
+            self.msg_label = ctk.CTkLabel(self.form_frame, text="Matrícula deve conter apenas números.", text_color="red")
+            self.msg_label.grid(row=8, column=0, columnspan=2, pady=5)
             return
         try:
             float(dados["salario"])
         except ValueError:
-            ctk.CTkLabel(self.form_frame, text="Salário deve ser um número.", text_color="red").grid(row=8, column=0, columnspan=2, pady=5)
+            self.msg_label = ctk.CTkLabel(self.form_frame, text="Salário deve ser um número.", text_color="red")
+            self.msg_label.grid(row=8, column=0, columnspan=2, pady=5)
             return
 
         # Verificação de duplicidade
         conn = self.bd.conectar()
         cursor = conn.cursor()
-        # Verifica se existe funcionário com todos os dados iguais
         cursor.execute(
             "SELECT * FROM funcionarios WHERE nome=? AND telefone=? AND email=? AND cpf=? AND matricula=? AND salario=? AND funcao=?",
             (dados["nome"], dados["telefone"], dados["email"], dados["cpf"], dados["matricula"], float(dados["salario"]), dados["funcao"])
         )
         if cursor.fetchone():
             conn.close()
-            ctk.CTkLabel(self.form_frame, text="Funcionário já cadastrado com todos os dados iguais.", text_color="red").grid(row=8, column=0, columnspan=2, pady=5)
+            self.msg_label = ctk.CTkLabel(self.form_frame, text="Funcionário já cadastrado com todos os dados iguais.", text_color="red")
+            self.msg_label.grid(row=8, column=0, columnspan=2, pady=5)
             return
-        # Verifica se existe funcionário com mesmo nome e CPF
         cursor.execute(
             "SELECT * FROM funcionarios WHERE nome=? AND cpf=?",
             (dados["nome"], dados["cpf"])
         )
         if cursor.fetchone():
             conn.close()
-            ctk.CTkLabel(self.form_frame, text="Funcionário com este nome e CPF já está cadastrado.", text_color="red").grid(row=8, column=0, columnspan=2, pady=5)
+            self.msg_label = ctk.CTkLabel(self.form_frame, text="Funcionário com este nome e CPF já está cadastrado.", text_color="red")
+            self.msg_label.grid(row=8, column=0, columnspan=2, pady=5)
             return
         conn.close()
 
@@ -156,12 +166,13 @@ class Funcionario(ctk.CTk):
                 float(dados["salario"]),
                 dados["funcao"]
             )
-            ctk.CTkLabel(self.form_frame, text="Funcionário cadastrado com sucesso!", text_color="green").grid(row=8, column=0, columnspan=2, pady=5)
-            # Limpa os campos
+            self.msg_label = ctk.CTkLabel(self.form_frame, text="Funcionário cadastrado com sucesso!", text_color="green")
+            self.msg_label.grid(row=8, column=0, columnspan=2, pady=5)
             for entry in self.entries.values():
                 entry.delete(0, "end")
         except Exception as e:
-            ctk.CTkLabel(self.form_frame, text=f"Erro: {e}", text_color="red").grid(row=8, column=0, columnspan=2, pady=5)
+            self.msg_label = ctk.CTkLabel(self.form_frame, text=f"Erro: {e}", text_color="red")
+            self.msg_label.grid(row=8, column=0, columnspan=2, pady=5)
 
     def mostrar_formulario_busca(self):
         if self.form_frame:
@@ -214,12 +225,32 @@ class Funcionario(ctk.CTk):
             return
 
         for idx, f in enumerate(resultados):
-            card = ctk.CTkFrame(self.form_frame, border_width=2, border_color="#444444")
-            card.grid(row=idx // 2, column=idx % 2, padx=10, pady=10, sticky="nsew")
-            for i, (label, valor) in enumerate(zip(labels, f[1:])):  # f[1:] ignora o ID
-                ctk.CTkLabel(card, text=f"{label.capitalize()}: {valor}", anchor="w").pack(anchor="w", padx=10, pady=2)
-            self.form_frame.grid_rowconfigure(idx // 2, weight=1)
-            self.form_frame.grid_columnconfigure(idx % 2, weight=1)
+            texto_btn = f"Nome: {f[1]} | Matrícula: {f[5]} | Função: {f[7]}"
+            btn = ctk.CTkButton(
+                self.form_frame,
+                text=texto_btn,
+                command=lambda funcionario=f: self.mostrar_info_funcionario(funcionario)
+            )
+            btn.pack(fill="x", padx=10, pady=5)
+
+    def mostrar_info_funcionario(self, funcionario):
+        # Remove frame anterior se existir
+        if self.form_frame:
+            self.form_frame.destroy()
+        self.form_frame = ctk.CTkFrame(self)
+        self.form_frame.pack(pady=20, padx=40, fill="x")
+
+        labels = list(self.COLUNA_MAP.keys())
+        for i, (label, valor) in enumerate(zip(labels, funcionario[1:])):
+            ctk.CTkLabel(self.form_frame, text=f"{label.capitalize()}: {valor}", anchor="w").grid(row=i, column=0, sticky="w", pady=5, padx=10)
+
+        btn_fechar = ctk.CTkButton(
+            self.form_frame,
+            text="Fechar",
+            fg_color="gray",
+            command=self.form_frame.destroy
+        )
+        btn_fechar.grid(row=len(labels), column=0, pady=10)
 
     def mostrar_formulario_editar(self):
         if self.form_frame:
@@ -295,6 +326,9 @@ class Funcionario(ctk.CTk):
             ctk.CTkLabel(self.form_frame, text=label.capitalize() + ":").grid(row=i, column=0, sticky="w", pady=5)
             entry = ctk.CTkEntry(self.form_frame)
             entry.insert(0, str(valor))
+            # Torna nome e cpf inalteráveis
+            if label in ["nome", "cpf"]:
+                entry.configure(state="disabled")
             entry.grid(row=i, column=1, pady=5, padx=5, sticky="ew")
             self.edicao_entries[label] = entry
 
@@ -338,6 +372,12 @@ class Funcionario(ctk.CTk):
             conn.commit()
             conn.close()
             ctk.CTkLabel(self.form_frame, text="Funcionário excluído com sucesso!", text_color="green").grid(row=10, column=0, columnspan=2, pady=5)
+            # Limpa os campos após excluir
+            if hasattr(self, "edicao_entries"):
+                for entry in self.edicao_entries.values():
+                    entry.configure(state="normal")  # Habilita para limpar
+                    entry.delete(0, "end")
+                    entry.configure(state="disabled")  # Volta para desabilitado se necessário
         except Exception as e:
             ctk.CTkLabel(self.form_frame, text=f"Erro ao excluir: {e}", text_color="red").grid(row=10, column=0, columnspan=2, pady=5)
 
